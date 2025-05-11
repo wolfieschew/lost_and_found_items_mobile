@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:lost_and_found_items_mobile/pages/dashboard.dart';
 // import 'package:lost_and_found_items_mobile/pages/message.dart';
 import 'pages/login_page.dart';
 // import 'pages/message.dart';
@@ -24,7 +23,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const Dashboard(),
+      home: const introPage(),
     );
   }
 }
