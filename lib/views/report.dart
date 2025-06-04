@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lost_and_found_items_mobile/pages/dashboard.dart';
+import 'package:lost_and_found_items_mobile/views/dashboard.dart';
 // import 'dashboard.dart';
 
 class CreateReportScreen extends StatelessWidget {
