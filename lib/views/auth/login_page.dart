@@ -14,6 +14,7 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   bool rememberMe = false;
+  bool _obscurePassword = true;
 
   // Tambahkan controller dan form key
   final _formKey = GlobalKey<FormState>();
@@ -118,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: TextFormField(
                             controller: _passwordController,
-                            obscureText: true,
+                            obscureText: _obscurePassword,
                             decoration: InputDecoration(
                               hintText: 'Enter Your Password',
                               hintStyle: GoogleFonts.poppins(
@@ -134,6 +135,19 @@ class _LoginPageState extends State<LoginPage> {
                                 borderSide: BorderSide(
                                   color: Color(0xFF004274),
                                 ),
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscurePassword
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.grey.shade600,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
                               ),
                             ),
                             validator: (value) {

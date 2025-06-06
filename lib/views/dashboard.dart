@@ -1,12 +1,17 @@
+// lib/views/dashboard.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // Tambahkan package ini
+import '../viewmodels/item_viewmodel.dart';
+import '../viewmodels/auth_viewmodel.dart';
 import 'message.dart';
 import 'report.dart';
-// import 'search_page.dart';
 import 'nontification.dart';
 import 'activity.dart';
 import 'feedback.dart';
 import 'search.dart';
 import 'profile.dart';
+import 'auth/login_page.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({Key? key}) : super(key: key);
@@ -26,6 +31,16 @@ class _DashboardState extends State<Dashboard> {
     const FeedbackPage(),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    // Cek login status tanpa memanggil method
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Tidak perlu memanggil method khusus karena AuthViewModel
+      // sudah memanggil _checkLoginStatus() di constructor
+    });
+  }
+
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
@@ -34,6 +49,18 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Cek status login
+    final authViewModel = Provider.of<AuthViewModel>(context);
+
+    // Jika belum login, redirect ke login page
+    if (!authViewModel.isLoggedIn && !authViewModel.isLoading) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));
+      });
+    }
+
     return Scaffold(
       body: _pages[_selectedIndex],
       floatingActionButton:
@@ -85,63 +112,50 @@ class _DashboardState extends State<Dashboard> {
   }
 }
 
-class ReportItem {
-  final String imagePath;
-  final String title;
-  final String date;
-
-  const ReportItem({
-    required this.imagePath,
-    required this.title,
-    required this.date,
-  });
-}
-
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
 
-  static const List<ReportItem> reports = [
-    ReportItem(
-      imagePath: 'assets/images/Gelang_emas.png',
-      title: 'Gelang Emas',
-      date: '03-05-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/Diary.png',
-      title: 'Diary',
-      date: '02-05-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/Tas Hitam.jpeg',
-      title: 'Tas Hitam',
-      date: '01-05-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/buku kuliah.jpg',
-      title: 'Buku Kuliah',
-      date: '30-04-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/kunci.jpeg',
-      title: 'Kunci',
-      date: '29-04-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/Hp.jpeg',
-      title: 'HP',
-      date: '28-04-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/Jam Tangan.jpeg',
-      title: 'Jam Tangan',
-      date: '27-04-2025',
-    ),
-    ReportItem(
-      imagePath: 'assets/images/Kacamata Boboho.jpeg',
-      title: 'Kacamata',
-      date: '26-04-2025',
-    ),
-  ];
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String _filterType = 'all'; // 'all', 'hilang', 'ditemukan'
+
+  @override
+  void initState() {
+    super.initState();
+    // Load items when the page is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ItemViewModel>(context, listen: false).getItems();
+    });
+  }
+
+  // Tambahkan method ini di dalam class _HomePageState
+  void _showFullImage(BuildContext context, String imageUrl, String title) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FullScreenImage(imageUrl: imageUrl, title: title),
+      ),
+    );
+  }
+
+  // Method untuk refresh data
+  Future<void> _refreshItems() async {
+    switch (_filterType) {
+      case 'hilang':
+        await Provider.of<ItemViewModel>(context, listen: false).getLostItems();
+        break;
+      case 'ditemukan':
+        await Provider.of<ItemViewModel>(
+          context,
+          listen: false,
+        ).getFoundItems();
+        break;
+      default:
+        await Provider.of<ItemViewModel>(context, listen: false).getItems();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -150,6 +164,7 @@ class HomePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
+            // Header (search dan notifikasi)
             Container(
               width: double.infinity,
               decoration: BoxDecoration(
@@ -235,21 +250,58 @@ class HomePage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
 
+            // Header timeline dengan filter
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 4,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Timeline Laporan',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  Icon(Icons.tune),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.tune),
+                    onSelected: (value) {
+                      setState(() {
+                        _filterType = value;
+                      });
+                      // Apply filter
+                      if (value == 'hilang') {
+                        Provider.of<ItemViewModel>(
+                          context,
+                          listen: false,
+                        ).getLostItems();
+                      } else if (value == 'ditemukan') {
+                        Provider.of<ItemViewModel>(
+                          context,
+                          listen: false,
+                        ).getFoundItems();
+                      } else {
+                        Provider.of<ItemViewModel>(
+                          context,
+                          listen: false,
+                        ).getItems();
+                      }
+                    },
+                    itemBuilder:
+                        (context) => [
+                          const PopupMenuItem(
+                            value: 'all',
+                            child: Text('Semua'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'hilang',
+                            child: Text('Barang Hilang'),
+                          ),
+                          const PopupMenuItem(
+                            value: 'ditemukan',
+                            child: Text('Barang Ditemukan'),
+                          ),
+                        ],
+                  ),
                 ],
               ),
             ),
@@ -268,238 +320,556 @@ class HomePage extends StatelessWidget {
 
             const SizedBox(height: 10),
 
+            // Grid laporan barang dari API
             Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: GridView.builder(
-                  itemCount: reports.length,
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 3 / 2.5,
-                  ),
-                  itemBuilder: (context, index) {
-                    final report = reports[index];
-                    return GestureDetector(
-                      onTap: () {
-                        showModalBottomSheet(
-                          context: context,
-                          backgroundColor: const Color(0xFFF9F9F9),
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(24),
+              child: Consumer<ItemViewModel>(
+                builder: (context, itemViewModel, _) {
+                  if (itemViewModel.isLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (itemViewModel.error != null) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: ${itemViewModel.error}',
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _refreshItems,
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (itemViewModel.items.isEmpty) {
+                    return RefreshIndicator(
+                      onRefresh: _refreshItems,
+                      child: ListView(
+                        children: const [
+                          SizedBox(height: 100),
+                          Center(
+                            child: Text(
+                              'Tidak ada laporan barang',
+                              style: TextStyle(fontSize: 16),
                             ),
                           ),
-                          builder: (_) {
-                            return Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                16,
-                                16,
-                                32,
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: _refreshItems,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: GridView.builder(
+                        itemCount: itemViewModel.items.length,
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 3 / 2.5,
+                            ),
+                        itemBuilder: (context, index) {
+                          final item = itemViewModel.items[index];
+                          return GestureDetector(
+                            onTap: () {
+                              _showItemDetails(context, item);
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              child: SingleChildScrollView(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Align(
-                                      alignment: Alignment.topRight,
-                                      child: IconButton(
-                                        icon: const Icon(Icons.close),
-                                        onPressed: () => Navigator.pop(context),
-                                      ),
-                                    ),
-                                    Text(
-                                      report.title,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child:
+                                        item.photoPath != null
+                                            ? CachedNetworkImage(
+                                              imageUrl: item.displayImageUrl,
+                                              height: 120,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              placeholder:
+                                                  (context, url) => Container(
+                                                    height: 120,
+                                                    color: Colors.grey[200],
+                                                    child: const Center(
+                                                      child:
+                                                          CircularProgressIndicator(),
+                                                    ),
+                                                  ),
+                                              errorWidget:
+                                                  (context, url, error) =>
+                                                      Container(
+                                                        height: 120,
+                                                        color: Colors.grey[200],
+                                                        child: const Icon(
+                                                          Icons.error,
+                                                        ),
+                                                      ),
+                                            )
+                                            : Container(
+                                              height: 120,
+                                              color: Colors.grey[200],
+                                              child: const Icon(
+                                                Icons.image_not_supported,
+                                              ),
+                                            ),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Text(
+                                      item.itemName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
-                                    const Text(
-                                      "Aksesoris Pribadi",
-                                      style: TextStyle(color: Colors.grey),
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8.0,
                                     ),
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red[100],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        "Kehilangan",
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-
-                                    Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 1.0,
-                                        vertical: 8.0,
-                                      ),
-                                      height: 1.0,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.withOpacity(0.3),
-                                        borderRadius: BorderRadius.circular(
-                                          1.0,
-                                        ),
-                                      ),
-                                    ),
-
-                                    const SizedBox(height: 16),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.asset(
-                                        report.imagePath,
-                                        height: 120,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
+                                    child: Row(
                                       children: [
                                         const Icon(
                                           Icons.calendar_today,
-                                          size: 16,
+                                          size: 14,
                                         ),
-                                        const SizedBox(width: 8),
-                                        Text("Date : ${report.date}"),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.email, size: 16),
-                                        SizedBox(width: 8),
-                                        Text("Email : user@gmail.com"),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    const Row(
-                                      children: [
-                                        Icon(Icons.location_on, size: 16),
-                                        SizedBox(width: 8),
+                                        const SizedBox(width: 4),
                                         Text(
-                                          "Location : Fakultas Ilmu Terapan",
+                                          item.formattedDate,
+                                          style: const TextStyle(fontSize: 12),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 16),
-                                    const Text(
-                                      "Deskripsi",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey[100],
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        "Lorem Ipsum is simply dummy text of the printing and typesetting industry...",
-                                        style: TextStyle(fontSize: 13),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF004274,
-                                              ),
-                                            ),
-                                            onPressed: () {},
-                                            child: const Text(
-                                              "Message",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: Colors.white,
-                                            ),
-                                            onPressed: () {},
-                                            child: const Text(
-                                              "Claim Barang",
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                              child: Image.asset(
-                                report.imagePath,
-                                height: 80,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(report.title),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8.0,
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.calendar_today, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    report.date,
-                                    style: const TextStyle(fontSize: 12),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _showItemDetails(BuildContext context, item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFFF9F9F9),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.topRight,
+                  child: IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+                Text(
+                  item.itemName,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(item.category, style: const TextStyle(color: Colors.grey)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color:
+                        item.type == 'hilang'
+                            ? Colors.red[100]
+                            : Colors.green[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.type == 'hilang' ? "Kehilangan" : "Ditemukan",
+                    style: TextStyle(
+                      color: item.type == 'hilang' ? Colors.red : Colors.green,
+                    ),
+                  ),
+                ),
+
+                Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: 1.0,
+                    vertical: 8.0,
+                  ),
+                  height: 1.0,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(1.0),
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: GestureDetector(
+                    // TAMBAHKAN GestureDetector di sini
+                    onTap: () {
+                      if (item.photoPath != null) {
+                        _showFullImage(
+                          context,
+                          item.displayImageUrl,
+                          item.itemName,
+                        );
+                      }
+                    },
+                    child:
+                        item.photoPath != null
+                            ? CachedNetworkImage(
+                              imageUrl: item.displayImageUrl,
+                              height: 120,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    height: 120,
+                                    color: Colors.grey[200],
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    height: 120,
+                                    color: Colors.grey[200],
+                                    child: const Icon(Icons.error),
+                                  ),
+                            )
+                            : Container(
+                              height: 120,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.image_not_supported),
+                            ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Icon(Icons.calendar_today, size: 16),
+                    const SizedBox(width: 8),
+                    Text("Tanggal: ${item.formattedDate}"),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.email, size: 16),
+                    const SizedBox(width: 8),
+                    Text("Email: ${item.email}"),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.phone, size: 16),
+                    const SizedBox(width: 8),
+                    Text("Phone: ${item.phoneNumber}"),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text("Lokasi: ${item.location}")),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.person, size: 16),
+                    const SizedBox(width: 8),
+                    Text("Pelapor: ${item.reportBy}"),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.flag, size: 16),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(item.status),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        "Status: ${item.statusDisplay}",
+                        style: TextStyle(
+                          color: _getStatusTextColor(item.status),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Deskripsi",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    item.description,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF004274),
+                        ),
+                        onPressed: () {
+                          // Implementasi kirim pesan ke pelapor
+                        },
+                        child: const Text(
+                          "Message",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                        ),
+                        onPressed:
+                            item.status != 'claimed'
+                                ? () {
+                                  // Implementasi klaim barang
+                                  _showClaimDialog(context, item);
+                                }
+                                : null,
+                        child: Text(
+                          item.status == 'claimed'
+                              ? "Sudah Diklaim"
+                              : "Claim Barang",
+                          style: TextStyle(
+                            color:
+                                item.status == 'claimed'
+                                    ? Colors.grey
+                                    : Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Dialog konfirmasi klaim barang
+  void _showClaimDialog(BuildContext context, item) {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Klaim Barang'),
+            content: const Text(
+              'Apakah Anda yakin ingin mengklaim barang ini? '
+              'Anda akan diminta untuk memverifikasi kepemilikan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  // Proses klaim barang
+                  _processClaimRequest(item);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF004274),
+                ),
+                child: const Text('Ya, Klaim'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Proses permintaan klaim barang
+  void _processClaimRequest(item) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Permintaan klaim telah dikirim ke pemilik barang.'),
+      ),
+    );
+  }
+
+  // Helper untuk warna status
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.amber[100]!;
+      case 'approved':
+        return Colors.green[100]!;
+      case 'rejected':
+        return Colors.red[100]!;
+      case 'claimed':
+        return Colors.blue[100]!;
+      default:
+        return Colors.grey[100]!;
+    }
+  }
+
+  // Helper untuk warna teks status
+  Color _getStatusTextColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.amber[800]!;
+      case 'approved':
+        return Colors.green[800]!;
+      case 'rejected':
+        return Colors.red[800]!;
+      case 'claimed':
+        return Colors.blue[800]!;
+      default:
+        return Colors.grey[800]!;
+    }
+  }
+}
+
+// Definisi widget FullScreenImage
+class FullScreenImage extends StatefulWidget {
+  final String imageUrl;
+  final String title;
+
+  const FullScreenImage({Key? key, required this.imageUrl, required this.title})
+    : super(key: key);
+
+  @override
+  State<FullScreenImage> createState() => _FullScreenImageState();
+}
+
+class _FullScreenImageState extends State<FullScreenImage> {
+  late TransformationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TransformationController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _resetZoom() {
+    _controller.value = Matrix4.identity();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        elevation: 0,
+        title: Text(widget.title),
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.zoom_out_map, color: Colors.white),
+            onPressed: _resetZoom,
+          ),
+        ],
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          transformationController: _controller,
+          minScale: 0.5,
+          maxScale: 4.0,
+          child: CachedNetworkImage(
+            imageUrl: widget.imageUrl,
+            fit: BoxFit.contain,
+            placeholder:
+                (context, url) => const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+            errorWidget:
+                (context, url, error) => Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      color: Colors.red,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Gagal memuat gambar',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      error.toString(),
+                      style: TextStyle(color: Colors.red[300], fontSize: 12),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+          ),
         ),
       ),
     );

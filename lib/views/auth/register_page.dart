@@ -345,6 +345,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                                   await authViewModel.register(
                                                     _nameController.text,
                                                     _emailController.text,
+                                                    _phoneController
+                                                        .text, // Teruskan nilai phone ke viewModel
                                                     _passwordController.text,
                                                     _confirmPasswordController
                                                         .text,

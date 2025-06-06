@@ -2,12 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'viewmodels/auth_viewmodel.dart';
-import 'views/intro/intro_pages.dart'; // Import file intro yang baru
+import 'viewmodels/item_viewmodel.dart';
+import 'views/intro/intro_pages.dart';
+import 'views/dashboard.dart';
 
 void main() {
   runApp(
     MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => AuthViewModel())],
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => ItemViewModel()),
+      ],
       child: const MyApp(),
     ),
   );
@@ -28,7 +33,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const introPage(),
+      home: const Dashboard(),
     );
   }
 }

@@ -27,9 +27,14 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String?> getToken() async {
+    return await _authRepository.getToken();
+  }
+
   Future<bool> register(
     String name,
     String email,
+    String phone, // Tambahkan parameter phone
     String password,
     String passwordConfirmation,
   ) async {
@@ -41,6 +46,7 @@ class AuthViewModel extends ChangeNotifier {
       final user = await _authRepository.register(
         name,
         email,
+        phone, // Teruskan parameter phone ke repository
         password,
         passwordConfirmation,
       );

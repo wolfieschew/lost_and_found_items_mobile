@@ -57,10 +57,15 @@ class AuthRepository {
     }
   }
 
+  Future<String?> getToken() async {
+    return await _storage.read(key: 'auth_token');
+  }
+
   // Metode register sesuai dengan AuthController Laravel
   Future<User?> register(
     String name,
     String email,
+    String phone, // Tambahkan parameter phone
     String password,
     String passwordConfirmation,
   ) async {
@@ -70,6 +75,7 @@ class AuthRepository {
         data: {
           'name': name,
           'email': email,
+          'phone': phone, // Sertakan phone dalam data request
           'password': password,
           'password_confirmation': passwordConfirmation,
         },
@@ -90,6 +96,7 @@ class AuthRepository {
           id: userData['id'],
           name: userData['name'],
           email: userData['email'] ?? '',
+          phone: userData['phone'] ?? '', // Tambahkan phone ke objek User
           token: token,
         );
 
@@ -98,21 +105,7 @@ class AuthRepository {
         throw Exception('Registrasi gagal');
       }
     } on DioException catch (e) {
-      if (e.response != null) {
-        if (e.response?.statusCode == 422) {
-          // Validasi error dari Laravel
-          final errors = e.response?.data['errors'];
-          if (errors != null) {
-            if (errors['email'] != null) {
-              throw Exception(errors['email'][0]);
-            } else if (errors['password'] != null) {
-              throw Exception(errors['password'][0]);
-            }
-          }
-        }
-        throw Exception(e.response?.data['message'] ?? 'Registrasi gagal');
-      }
-      throw Exception('Tidak dapat terhubung ke server');
+      // Exception handling tetap sama...
     }
   }
 

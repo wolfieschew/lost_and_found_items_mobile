@@ -5,7 +5,7 @@ class ApiClient {
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
-  static const String baseUrl = 'http://172.20.10.4:8000/api/v1';
+  static const String baseUrl = 'http://127.0.0.1:8000/api/v1/';
 
   ApiClient() {
     _dio.options.baseUrl = baseUrl;
@@ -48,5 +48,20 @@ class ApiClient {
     Map<String, dynamic>? queryParameters,
   }) {
     return _dio.post(path, data: data, queryParameters: queryParameters);
+  }
+
+  Future<Response> put(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return _dio.put(path, data: data, queryParameters: queryParameters);
+  }
+
+  Future<Response> delete(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    return _dio.delete(path, queryParameters: queryParameters);
   }
 }
