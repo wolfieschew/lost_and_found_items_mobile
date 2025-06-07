@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../viewmodels/activity_viewmodel.dart';
+import '../models/item.dart';
+import './item_detail.dart';
 
 class MyActivityPage extends StatefulWidget {
   const MyActivityPage({super.key});
@@ -10,6 +14,38 @@ class MyActivityPage extends StatefulWidget {
 class _MyActivityPageState extends State<MyActivityPage> {
   String selectedCategory = "Category";
   String selectedReportType = "Report";
+  final ScrollController _scrollController = ScrollController();
+
+  bool _isSelectionMode = false; // Mode seleksi aktif atau tidak
+  Set<int> _selectedItems = {}; // Set untuk menyimpan ID item yang dipilih
+
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final viewModel = Provider.of<ActivityViewModel>(context, listen: false);
+      viewModel.getMyItems(refresh: true);
+    });
+
+    _scrollController.addListener(_scrollListener);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.pixels ==
+        _scrollController.position.maxScrollExtent) {
+      // Load more data when user reaches end of list
+      Provider.of<ActivityViewModel>(context, listen: false).getMyItems();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,70 +59,16 @@ class _MyActivityPageState extends State<MyActivityPage> {
         scrolledUnderElevation: 0,
         titleSpacing: 16.0,
         title: Text(
-          'My Activity',
+          _isSelectionMode
+              ? '${_selectedItems.length} item dipilih'
+              : 'My Activity',
           style: GoogleFonts.lato(
             fontSize: 24,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
         ),
-        // actions: [
-        //   Padding(
-        //     padding: const EdgeInsets.only(right: 16.0),
-        //     child: Container(
-        //       decoration: BoxDecoration(
-        //         color: Colors.white,
-        //         borderRadius: BorderRadius.circular(5.0),
-        //         boxShadow: [
-        //           BoxShadow(
-        //             color: Colors.grey.withOpacity(0.2),
-        //             spreadRadius: 1,
-        //             blurRadius: 2,
-        //             offset: const Offset(0, 1),
-        //           ),
-        //         ],
-        //       ),
-        //       child: IconButton(
-        //         // Ganti Icons.menu dengan Icons.sort
-        //         icon: const Icon(Icons.sort, color: Color(0xFF004274)),
-        //         onPressed: () {
-        //           // Handle sort function
-        //         },
-        //         constraints: const BoxConstraints.tightFor(
-        //           width: 40,
-        //           height: 40,
-        //         ),
-        //       ),
-        //     ),
-        //   ),
-        //   Padding(
-        //     padding: const EdgeInsets.only(right: 16.0),
-        //     child: Container(
-        //       decoration: BoxDecoration(
-        //         color: Colors.white,
-        //         borderRadius: BorderRadius.circular(5.0),
-        //         boxShadow: [
-        //           BoxShadow(
-        //             color: Colors.grey.withOpacity(0.2),
-        //             spreadRadius: 1,
-        //             blurRadius: 2,
-        //             offset: const Offset(0, 1),
-        //           ),
-        //         ],
-        //       ),
-        //       child: IconButton(
-        //         icon: const Icon(Icons.menu, color: Color(0xFF004274)),
-        //         onPressed: () {
-        //           // Handle menu
-        //         },
-        //         constraints: const BoxConstraints.tightFor(
-        //           width: 40,
-        //           height: 40,
-        //         ),
-        //       ),
-        //     ),
-        //   ),
-        // ],
+        actions: [],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
           child: Container(color: Colors.grey[300], height: 1.0),
@@ -103,95 +85,194 @@ class _MyActivityPageState extends State<MyActivityPage> {
                   selectedCategory,
                   (value) {
                     setState(() => selectedCategory = value!);
+                    _applyFilters();
                   },
-                  const ["Category", "Electronic", "Accesories", "Wallet"],
+                  const [
+                    "Category",
+                    "Perhiasan Khusus",
+                    "Elektronik",
+                    "Buku & Dokumen",
+                    "Tas & Dompet",
+                    "Perlengkapan Pribadi",
+                    "Peralatan Praktikum",
+                    "Aksesoris",
+                    "Lainnya",
+                  ],
                 ),
                 const SizedBox(width: 8),
                 _buildDropdown("Report", selectedReportType, (value) {
                   setState(() => selectedReportType = value!);
-                }, const ["Report", "Lost", "Found"]),
-
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10.0),
-                        border: Border.all(color: Colors.grey.shade400),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Color(0xFF004274),
-                        ),
-                        onPressed: () {},
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                      ),
+                  _applyFilters();
+                }, const ["Report", "hilang", "ditemukan"]),
+                const SizedBox(width: 8),
+                // Tambahkan kondisional button di sini
+                Container(
+                  height: 48,
+                  width: 48,
+                  decoration: BoxDecoration(
+                    color:
+                        _isSelectionMode
+                            ? Colors.red.withOpacity(0.1)
+                            : Colors.white,
+                    borderRadius: BorderRadius.circular(28.0),
+                    border: Border.all(
+                      color:
+                          _isSelectionMode ? Colors.red : Colors.grey.shade400,
                     ),
                   ),
+                  child: IconButton(
+                    icon: Icon(
+                      _isSelectionMode ? Icons.close : Icons.delete_outline,
+                      color:
+                          _isSelectionMode
+                              ? Colors.red
+                              : const Color(0xFF004274),
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      if (_isSelectionMode) {
+                        // Keluar dari mode seleksi
+                        setState(() {
+                          _isSelectionMode = false;
+                          _selectedItems.clear();
+                        });
+                      } else {
+                        // Aktifkan mode seleksi
+                        setState(() {
+                          _isSelectionMode = true;
+                        });
+                      }
+                    },
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
+                if (_isSelectionMode && _selectedItems.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(left: 8),
+                    height: 48,
+                    width: 48,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(28.0),
+                      border: Border.all(color: Colors.red),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.red,
+                        size: 20,
+                      ),
+                      onPressed: _confirmDelete,
+                      padding: EdgeInsets.zero,
+                    ),
+                  ),
               ],
             ),
             const SizedBox(height: 16),
+
             Expanded(
-              child: ListView(
-                children: [
-                  laporanCard(
-                    context,
-                    'assets/images/wallet.png',
-                    'Dompet Cokelat',
-                    '4/4/2025',
-                    'Hilang',
-                    'Aksesoris',
-                    'Jam tangan merek Casio warna hitam hilang di taman.',
-                    '08123456789',
-                    'user@example.com',
-                  ),
-                  laporanCard(
-                    context,
-                    'assets/images/wallet.png',
-                    'Dompet',
-                    '3/3/2025',
-                    'Hilang',
-                    'Dompet',
-                    'Dompet cokelat berisi KTP dan SIM hilang di kantin.',
-                    '08234567890',
-                    'user2@example.com',
-                  ),
-                  laporanCard(
-                    context,
-                    'assets/images/key.png',
-                    'Kunci Motor',
-                    '2/2/2025',
-                    'Ditemukan',
-                    'Barang Penting',
-                    'Ditemukan Kunci Di GKU.',
-                    '08345678901',
-                    'user3@example.com',
-                  ),
-                  laporanCard(
-                    context,
-                    'assets/images/ktm.png',
-                    'KTM Bagas',
-                    '1/1/2025',
-                    'Ditemukan',
-                    'Dokumen Penting',
-                    'KTM Ditemukan di parkiran.',
-                    '08456789012',
-                    'user4@example.com',
-                  ),
-                ],
+              child: Consumer<ActivityViewModel>(
+                builder: (context, viewModel, child) {
+                  if (viewModel.loading && viewModel.myItems.isEmpty) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  if (viewModel.error != null && viewModel.myItems.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(viewModel.error!),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed:
+                                () => viewModel.getMyItems(refresh: true),
+                            child: const Text('Coba Lagi'),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  if (viewModel.myItems.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Image.asset(
+                            'assets/images/404lost.png',
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.contain,
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Belum ada laporan barang',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Laporan yang Anda buat akan tampil di sini',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return RefreshIndicator(
+                    onRefresh: () => viewModel.getMyItems(refresh: true),
+                    child: ListView.builder(
+                      controller: _scrollController,
+                      itemCount:
+                          viewModel.myItems.length +
+                          (viewModel.hasMorePages && !viewModel.loading
+                              ? 1
+                              : 0), // Perbaiki kondisi
+                      itemBuilder: (context, index) {
+                        if (index == viewModel.myItems.length) {
+                          return const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Center(child: CircularProgressIndicator()),
+                          );
+                        }
+
+                        final item = viewModel.myItems[index];
+                        return buildActivityCard(context, item);
+                      },
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _applyFilters() {
+    final viewModel = Provider.of<ActivityViewModel>(context, listen: false);
+
+    // Reset filter terlebih dahulu
+    viewModel.resetFilters();
+
+    // Set filter kategori - pastikan kategori tidak sama dengan default
+    if (selectedCategory != "Category") {
+      viewModel.setFilterCategory(selectedCategory);
+      print("Filter kategori diterapkan: $selectedCategory"); // Debug
+    }
+
+    // Set filter tipe laporan - pastikan tipe tidak sama dengan default
+    if (selectedReportType != "Report") {
+      viewModel.setFilterType(
+        selectedReportType.toLowerCase(),
+      ); // Convert ke lowercase
+      print("Filter tipe diterapkan: $selectedReportType"); // Debug
+    }
+
+    // Refresh data dengan filter baru
+    viewModel.getMyItems(refresh: true);
   }
 
   Widget _buildDropdown(
@@ -280,28 +361,20 @@ class _MyActivityPageState extends State<MyActivityPage> {
     );
   }
 
-  Widget laporanCard(
-    BuildContext context,
-    String imageAsset,
-    String judul,
-    String tanggalKejadian,
-    String jenisLaporan,
-    String kategori,
-    String deskripsi,
-    String whatsapp,
-    String email,
-  ) {
+  Widget buildActivityCard(BuildContext context, Item item) {
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            jenisLaporan == 'Hilang'
-                ? Colors.red.withOpacity(0.1)
-                : jenisLaporan == 'Ditemukan'
-                ? Colors.green.withOpacity(0.1)
-                : Colors.white,
+            item.type == 'hilang'
+                ? const Color(0xFFFFAFAF).withOpacity(0.1)
+                : Colors.green.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
+        border:
+            _selectedItems.contains(item.id)
+                ? Border.all(color: Colors.blue, width: 2)
+                : null,
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.2),
@@ -311,149 +384,330 @@ class _MyActivityPageState extends State<MyActivityPage> {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Transform.translate(
-                offset: Offset(0, -8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.asset(
-                    imageAsset,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder:
-                        (context, error, stackTrace) =>
-                            const Icon(Icons.broken_image, size: 60),
-                  ),
+      child: InkWell(
+        onTap: () {
+          // Jika dalam mode seleksi, toggle item selection
+          if (_isSelectionMode) {
+            setState(() {
+              if (_selectedItems.contains(item.id)) {
+                _selectedItems.remove(item.id);
+              } else {
+                _selectedItems.add(item.id);
+              }
+            });
+          } else {
+            // Navigate to item detail jika tidak dalam mode seleksi
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ItemDetailScreen(item: item),
+              ),
+            );
+          }
+        },
+        child: Row(
+          children: [
+            // Checkbox saat mode seleksi aktif
+            if (_isSelectionMode)
+              Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Checkbox(
+                  value: _selectedItems.contains(item.id),
+                  onChanged: (bool? value) {
+                    setState(() {
+                      if (value == true) {
+                        _selectedItems.add(item.id);
+                      } else {
+                        _selectedItems.remove(item.id);
+                      }
+                    });
+                  },
                 ),
               ),
-            ],
-          ),
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child:
+                  item.photoPath != null
+                      ? Image.network(
+                        item.displayImageUrl,
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        errorBuilder:
+                            (context, error, stackTrace) => Container(
+                              width: 80,
+                              height: 80,
+                              color: Colors.grey[200],
+                              child: const Icon(Icons.broken_image, size: 40),
+                            ),
+                      )
+                      : Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey[200],
+                        child: const Icon(Icons.image_not_supported, size: 40),
+                      ),
+            ),
 
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Container(
-                        margin: EdgeInsets.only(top: 4), // margin top
-                        child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start, // rata kiri
-                          children: [
-                            Text(
-                              judul,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+            const SizedBox(width: 12),
+
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.itemName,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text("$tanggalKejadian"),
-                            Text(
-                              deskripsi.length > 50
-                                  ? "${deskripsi.substring(0, 20)}..."
-                                  : deskripsi,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              Text(item.formattedDate),
+                              Text(
+                                item.description.length > 50
+                                    ? "${item.description.substring(0, 50)}..."
+                                    : item.description,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
 
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ElevatedButton(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (_) => EditReportPage(
-                                        imageAsset: imageAsset,
-                                        judul: judul,
-                                        jenisLaporan: jenisLaporan,
-                                        kategori: kategori,
-                                        tanggalKejadian: tanggalKejadian,
-                                        deskripsi: deskripsi,
-                                        whatsapp: whatsapp,
-                                        email: email,
-                                      ),
-                                ),
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(
-                                0xFF004274,
-                              ).withOpacity(0.3),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                            ),
-                            child: const Text(
-                              "Edit",
-                              style: TextStyle(color: Colors.white),
-                            ),
+                  const SizedBox(height: 8),
+
+                  // Action buttons
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          // Ubah dari menggunakan type ke menggunakan status
+                          color: _getStatusBgColor(item.status),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          item.statusDisplay,
+                          style: TextStyle(
+                            // Ubah warna text berdasarkan status juga
+                            color: _getStatusTextColor(item.status),
+                            fontSize: 12,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                ),
-              ],
+
+                      const Spacer(),
+
+                      ElevatedButton(
+                        onPressed: () {
+                          // Navigate to edit page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EditReportPage(item: item),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(
+                            0xFF004274,
+                          ).withOpacity(0.3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                        ),
+                        child: const Text(
+                          "Edit",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  // Tambahkan method ini dalam class _MyActivityPageState
+  Color _getStatusBgColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.amber.withOpacity(0.3); // Kuning untuk Menunggu
+      case 'approved':
+        return Colors.green.withOpacity(0.3);
+      case 'rejected':
+        return Colors.red.withOpacity(0.3);
+      case 'claimed':
+        return Colors.blue.withOpacity(0.3);
+      default:
+        return Colors.grey.withOpacity(0.3);
+    }
+  }
+
+  Color _getStatusTextColor(String status) {
+    switch (status) {
+      case 'pending':
+        return Colors.amber[800]!; // Teks kuning lebih gelap
+      case 'approved':
+        return Colors.green[800]!;
+      case 'rejected':
+        return Colors.red[800]!;
+      case 'claimed':
+        return Colors.blue[800]!;
+      default:
+        return Colors.grey[800]!;
+    }
+  }
+
+  void _confirmDelete() {
+    showDialog(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Konfirmasi Hapus'),
+            content: Text(
+              'Hapus ${_selectedItems.length} item yang dipilih? Tindakan ini tidak dapat dibatalkan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Batal'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteSelectedItems();
+                },
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Hapus'),
+              ),
+            ],
+          ),
+    );
+  }
+
+  // Method untuk menghapus item yang dipilih
+  Future<void> _deleteSelectedItems() async {
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final viewModel = Provider.of<ActivityViewModel>(context, listen: false);
+
+    try {
+      // Gunakan Future.forEach untuk menghapus item secara berurutan
+      List<int> deletedIds = [];
+      List<String> errors = [];
+
+      // Buat salinan _selectedItems karena kita akan memodifikasinya di dalam loop
+      final itemsToDelete = List<int>.from(_selectedItems);
+
+      for (final itemId in itemsToDelete) {
+        try {
+          final result = await viewModel.deleteItem(itemId);
+          if (result['success']) {
+            deletedIds.add(itemId);
+            // Hapus dari daftar yang dipilih
+            _selectedItems.remove(itemId);
+          } else {
+            errors.add('ID $itemId: ${result['message']}');
+          }
+        } catch (e) {
+          errors.add('ID $itemId: $e');
+        }
+      }
+
+      // Tampilkan pesan hasil
+      if (deletedIds.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${deletedIds.length} item berhasil dihapus'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+
+      if (errors.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${errors.length} item gagal dihapus'),
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'Detail',
+              onPressed: () {
+                // Tampilkan detail error jika perlu
+                showDialog(
+                  context: context,
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Detail Error'),
+                        content: SingleChildScrollView(
+                          child: Text(errors.join('\n')),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Tutup'),
+                          ),
+                        ],
+                      ),
+                );
+              },
+            ),
+          ),
+        );
+      }
+
+      // Refresh data
+      viewModel.getMyItems(refresh: true);
+
+      // Keluar dari mode seleksi
+      setState(() {
+        _isSelectionMode = false;
+      });
+    } finally {
+      setState(() {
+        _isSubmitting = false;
+      });
+    }
+  }
 }
 
-// ---------------------- EditReportPage ----------------------
+// EditReportPage yang diperbarui untuk menerima item dari API
 class EditReportPage extends StatefulWidget {
-  final String imageAsset,
-      judul,
-      jenisLaporan,
-      kategori,
-      tanggalKejadian,
-      deskripsi,
-      whatsapp,
-      email;
+  final Item item;
 
-  const EditReportPage({
-    super.key,
-    required this.imageAsset,
-    required this.judul,
-    required this.jenisLaporan,
-    required this.kategori,
-    required this.tanggalKejadian,
-    required this.deskripsi,
-    required this.whatsapp,
-    required this.email,
-  });
+  const EditReportPage({super.key, required this.item});
 
   @override
   State<EditReportPage> createState() => _EditReportPageState();
 }
 
 class _EditReportPageState extends State<EditReportPage> {
+  bool _isSubmitting = false;
+
   late TextEditingController itemNameController,
       descriptionController,
       whatsappController,
@@ -464,29 +718,63 @@ class _EditReportPageState extends State<EditReportPage> {
   @override
   void initState() {
     super.initState();
-    itemNameController = TextEditingController(text: widget.judul);
-    descriptionController = TextEditingController(text: widget.deskripsi);
-    whatsappController = TextEditingController(text: widget.whatsapp);
-    emailController = TextEditingController(text: widget.email);
-    selectedCondition = widget.jenisLaporan;
-    selectedCategory = widget.kategori;
-    selectedDate = _parseDate(widget.tanggalKejadian);
+    itemNameController = TextEditingController(text: widget.item.itemName);
+    descriptionController = TextEditingController(
+      text: widget.item.description,
+    );
+    whatsappController = TextEditingController(text: widget.item.phoneNumber);
+    emailController = TextEditingController(text: widget.item.email);
+
+    // Perbaiki konversi tipe laporan
+    selectedCondition = widget.item.type == 'hilang' ? 'Hilang' : 'Ditemukan';
+
+    // Pastikan kategori cocok dengan opsi yang tersedia
+    selectedCategory = _mapApiCategoryToDropdownCategory(widget.item.category);
+
+    selectedDate =
+        widget.item.dateOfEvent is DateTime
+            ? widget.item.dateOfEvent
+            : DateTime.tryParse(widget.item.dateOfEvent.toString()) ??
+                DateTime.now();
   }
 
-  DateTime _parseDate(String text) {
-    final parts = text.split('/');
-    return DateTime(
-      int.parse(parts[2]),
-      int.parse(parts[1]),
-      int.parse(parts[0]),
-    );
+  // Tambahkan fungsi untuk memetakan kategori API ke kategori dropdown
+  String _mapApiCategoryToDropdownCategory(String apiCategory) {
+    // Daftar kategori yang tersedia di dropdown
+    const availableCategories = [
+      "Elektronik",
+      "Aksesoris",
+      "Dokumen Pribadi",
+      "KTM",
+      "Alat Tulis",
+      "Kunci",
+      "Buku",
+      "Lainnya",
+    ];
+
+    // Cek apakah kategori dari API cocok dengan salah satu kategori dropdown
+    if (availableCategories.contains(apiCategory)) {
+      return apiCategory;
+    } else if (apiCategory == "Documents") {
+      return "Dokumen Pribadi"; // Map "Documents" ke "Dokumen Pribadi"
+    } else {
+      return "Lainnya"; // Default ke "Lainnya" jika tidak ada yang cocok
+    }
+  }
+
+  @override
+  void dispose() {
+    itemNameController.dispose();
+    descriptionController.dispose();
+    whatsappController.dispose();
+    emailController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9F9),
-
       appBar: AppBar(
         title: const Text("Edit Report", style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.white,
@@ -515,11 +803,13 @@ class _EditReportPageState extends State<EditReportPage> {
               selectedCategory,
               (val) => setState(() => selectedCategory = val),
               const [
+                "Perhiasan Khusus",
                 "Elektronik",
-                "Aksesoris",
-                "Dompet",
-                "Barang Penting",
-                "Dokumen Penting",
+                "Buku & Dokumen",
+                "Tas & Dompet",
+                "Perlengkapan Pribadi",
+                "Pralatihan Praktikum",
+                "Aksesori",
                 "Lainnya",
               ],
             ),
@@ -535,7 +825,7 @@ class _EditReportPageState extends State<EditReportPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _isSubmitting ? null : () => _updateReport(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF004274),
                   minimumSize: const Size.fromHeight(50),
@@ -544,10 +834,22 @@ class _EditReportPageState extends State<EditReportPage> {
                     borderRadius: BorderRadius.circular(8.0),
                   ),
                 ),
-                child: const Text(
-                  "Submit",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
+                child:
+                    _isSubmitting
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                        : const Text(
+                          "Submit",
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
               ),
             ),
           ],
@@ -597,7 +899,17 @@ class _EditReportPageState extends State<EditReportPage> {
       decoration: InputDecoration(
         hintText: hint,
         prefixIcon: icon != null ? Icon(icon) : null,
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF004274)),
+        ),
       ),
     );
   }
@@ -610,7 +922,17 @@ class _EditReportPageState extends State<EditReportPage> {
             selectedDate == null
                 ? "dd/mm/yyyy"
                 : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-        border: const OutlineInputBorder(),
+        filled: true,
+        fillColor: Colors.white,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Colors.grey.shade400),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFF004274)),
+        ),
         suffixIcon: const Icon(Icons.calendar_today),
       ),
       onTap: () async {
@@ -646,11 +968,21 @@ class _EditReportPageState extends State<EditReportPage> {
           height: 180,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            image: DecorationImage(
-              image: AssetImage(widget.imageAsset),
-              fit: BoxFit.cover,
-            ),
+            image:
+                widget.item.photoPath != null
+                    ? DecorationImage(
+                      image: NetworkImage(widget.item.displayImageUrl),
+                      fit: BoxFit.cover,
+                    )
+                    : null,
+            color: Colors.grey[200],
           ),
+          child:
+              widget.item.photoPath == null
+                  ? const Center(
+                    child: Icon(Icons.image_not_supported, size: 50),
+                  )
+                  : null,
         ),
         Positioned(
           top: 8,
@@ -659,11 +991,77 @@ class _EditReportPageState extends State<EditReportPage> {
             backgroundColor: Colors.white,
             child: IconButton(
               icon: const Icon(Icons.edit, color: Colors.black),
-              onPressed: () {},
+              onPressed: () {
+                // Implementasi fitur ganti gambar
+              },
             ),
           ),
         ),
       ],
     );
+  }
+
+  // Tambahkan method untuk update report
+  Future<void> _updateReport() async {
+    // Validasi form sederhana
+    if (itemNameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama barang tidak boleh kosong')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    // Siapkan data untuk update
+    final data = {
+      'item_name': itemNameController.text,
+      'category': selectedCategory,
+      'type': selectedCondition?.toLowerCase(),
+      'description': descriptionController.text,
+      'date_of_event': selectedDate?.toIso8601String(),
+      'location': widget.item.location, // Gunakan nilai lama jika tidak diubah
+      'email': emailController.text,
+      'phone_number': whatsappController.text,
+    };
+
+    try {
+      // Panggil API update
+      final viewModel = Provider.of<ActivityViewModel>(context, listen: false);
+      final result = await viewModel.updateItem(widget.item.id, data);
+
+      if (!mounted) return;
+
+      if (result['success']) {
+        // Tampilkan pesan sukses
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result['message'])));
+
+        // Kembali ke halaman sebelumnya
+        Navigator.pop(
+          context,
+          true,
+        ); // Pass true untuk menandakan update berhasil
+      } else {
+        // Tampilkan pesan error
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result['message'])));
+      }
+    } catch (e) {
+      // Handle error
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Terjadi kesalahan: $e')));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 }

@@ -5,6 +5,7 @@ import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/item_viewmodel.dart';
 import 'views/intro/intro_pages.dart';
 import 'views/dashboard.dart';
+import 'viewmodels/activity_viewmodel.dart';
 
 void main() {
   runApp(
@@ -12,6 +13,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => ItemViewModel()),
+        ChangeNotifierProvider(create: (_) => ActivityViewModel()),
       ],
       child: const MyApp(),
     ),

@@ -372,12 +372,14 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                       value: _selectedCategory,
                       items:
                           [
-                            'Electronics',
-                            'Accessories',
-                            'Documents',
-                            'Key',
-                            'Books',
-                            'Bag',
+                            'Perhiasan Khusus',
+                            'Elektronik',
+                            'Buku & Dokumen',
+                            'Tas & Dompet',
+                            'Perlengkapan Pribadi',
+                            'Peralatan Praktikum',
+                            'Aksesori',
+                            'Lainnya',
                           ].map((val) {
                             return DropdownMenuItem(
                               value: val,
