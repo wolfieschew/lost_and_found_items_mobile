@@ -185,4 +185,10 @@ class ItemViewModel extends ChangeNotifier {
   Future<void> getFoundItems() async {
     await getItems(type: 'ditemukan');
   }
+
+  void clearItems() {
+    _items = [];
+    _isLoading = false;
+    notifyListeners();
+  }
 }

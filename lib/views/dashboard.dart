@@ -29,7 +29,7 @@ class _DashboardState extends State<Dashboard> {
     const MyActivityPage(),
     const Message(),
     const MyProfilePage(),
-    const FeedbackPage(),
+    // const FeedbackPage(),
   ];
 
   @override
@@ -105,7 +105,7 @@ class _DashboardState extends State<Dashboard> {
               label: 'Messages',
             ),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Feedback'),
+            // BottomNavigationBarItem(icon: Icon(Icons.star), label: 'Feedback'),
           ],
         ),
       ),

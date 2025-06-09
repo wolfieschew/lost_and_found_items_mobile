@@ -112,21 +112,55 @@ class AuthRepository {
   // Metode logout
   Future<bool> logout() async {
     try {
-      await _apiClient.post('/logout');
+      // Set flag untuk mencegah API calls selama logout
+      ApiClient.isLoggingOut = true;
+
+      // Ambil token terlebih dahulu
+      final token = await _storage.read(key: 'auth_token');
+
+      if (token != null) {
+        final response = await _apiClient.post('/logout', data: {});
+        print('Logout response: ${response.statusCode}');
+      }
+
+      // Hapus token lokal
       await _storage.delete(key: 'auth_token');
       return true;
     } catch (e) {
-      print('Error logout: $e');
-      // Hapus token meskipun API gagal
+      print('Logout error: $e');
       await _storage.delete(key: 'auth_token');
-      return false;
+      return true;
+    } finally {
+      // Flag tetap true - akan direset setelah navigasi selesai
     }
   }
 
   // Cek status login
   Future<bool> isLoggedIn() async {
-    final token = await _storage.read(key: 'auth_token');
-    return token != null;
+    try {
+      final token = await _storage.read(key: 'auth_token');
+
+      if (token == null || token.isEmpty) {
+        print('Token tidak ditemukan, user tidak login');
+        return false;
+      }
+
+      print('Token ditemukan, validasi dengan server...');
+
+      try {
+        // Validasi token dengan API
+        final response = await _apiClient.get('/user');
+        return response.statusCode == 200;
+      } catch (e) {
+        print('Error validasi token: $e');
+        // PENTING: Hapus token jika tidak valid
+        await _storage.delete(key: 'auth_token');
+        return false;
+      }
+    } catch (e) {
+      print('Error umum cek login: $e');
+      return false;
+    }
   }
 
   // Ambil user yang sedang login
@@ -135,15 +169,27 @@ class AuthRepository {
       final response = await _apiClient.get('/user');
 
       if (response.statusCode == 200) {
-        final userData = response.data;
+        // API mengembalikan data dalam struktur { data: { ... } }
+        final userData = response.data['data'] ?? response.data;
+        print('API Response: $userData');
+
         return User(
           id: userData['id'],
-          name: userData['name'],
+          name: userData['name'], // "Emul Bunny"
           email: userData['email'],
+          firstName: userData['first_name'], // "Emul"
+          lastName: userData['last_name'], // "Bunny"
+          phone: userData['phone'],
+          nim: userData['nim'],
+          address: userData['address'],
+          role: userData['role'],
+          // Gunakan profile_photo_url bukan profile_picture
+          profilePicture: userData['profile_photo_url'],
         );
       }
       return null;
     } catch (e) {
+      print('Error in getCurrentUser: $e');
       return null;
     }
   }

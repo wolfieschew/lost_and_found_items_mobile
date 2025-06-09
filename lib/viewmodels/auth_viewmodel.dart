@@ -86,15 +86,46 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  bool _isLoggedOut = false;
+  bool get isLoggedOut => _isLoggedOut;
+
   Future<void> logout() async {
     _isLoading = true;
+    // Set flag logout untuk mencegah API calls
+    _isLoggedOut = true;
     notifyListeners();
 
-    await _authRepository.logout();
-    _isLoggedIn = false;
-    _user = null;
+    try {
+      await _authRepository.logout();
+    } finally {
+      // Reset state user
+      _isLoggedIn = false;
+      _user = null;
 
-    _isLoading = false;
+      // Selesai loading
+      _isLoading = false;
+      notifyListeners();
+
+      print("User logged out successfully, preventing further API calls");
+    }
+  }
+
+  // Tambahkan method ini untuk memeriksa apakah API calls diperbolehkan
+  bool shouldAllowApiCall() {
+    return _isLoggedIn && !_isLoggedOut;
+  }
+
+  // Method untuk reset state setelah navigasi ke login page selesai
+  void resetLogoutState() {
+    _isLoggedOut = false;
+    notifyListeners();
+  }
+
+  void resetState() {
+    _user = null;
+    _isLoggedIn = false;
+    _isLoggedOut = false;
+    _error = null;
     notifyListeners();
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 class ApiClient {
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  static bool isLoggingOut = false;
 
   static const String baseUrl = 'http://127.0.0.1:8000/api/v1/';
 
@@ -21,6 +22,17 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // Cek flag global
+          if (ApiClient.isLoggingOut && options.path != '/logout') {
+            print("API call prevented during logout: ${options.path}");
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                error: "User logging out, API calls not allowed",
+              ),
+            );
+          }
+
           final token = await _storage.read(key: 'auth_token');
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';

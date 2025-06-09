@@ -6,6 +6,7 @@ import 'viewmodels/item_viewmodel.dart';
 import 'views/intro/intro_pages.dart';
 import 'views/dashboard.dart';
 import 'viewmodels/activity_viewmodel.dart';
+import 'views/auth/auth_checker.dart';
 
 void main() {
   runApp(
@@ -35,7 +36,7 @@ class MyApp extends StatelessWidget {
           elevation: 0,
         ),
       ),
-      home: const Dashboard(),
+      home: const AuthChecker(),
     );
   }
 }

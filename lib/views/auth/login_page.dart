@@ -3,10 +3,14 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import 'register_page.dart';
-import '../dashboard.dart'; // Sesuaikan path sesuai struktur folder
+import '../dashboard.dart';
+import '../../services/api/api_client.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  final bool forceRefresh;
+
+  const LoginPage({Key? key, this.forceRefresh = false}) : super(key: key);
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -26,6 +30,47 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Reset logout flag untuk memastikan login berfungsi
+    ApiClient.isLoggingOut = false;
+
+    // Existing code...
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cleanupAfterLogout();
+    });
+  }
+
+  Future<void> _cleanupAfterLogout() async {
+    // Reset token
+    final storage = const FlutterSecureStorage();
+    await storage.delete(key: 'auth_token');
+
+    // Reset controllers dan pastikan TextField di-rebuild
+    _emailController.clear();
+    _passwordController.clear();
+
+    // Force rebuild dengan memberikan Focus baru
+    if (mounted) {
+      FocusScope.of(context).requestFocus(FocusNode());
+    }
+
+    // Reset state provider
+    if (context.mounted) {
+      try {
+        final authViewModel = Provider.of<AuthViewModel>(
+          context,
+          listen: false,
+        );
+        authViewModel.resetState();
+      } catch (e) {
+        print('Error resetting auth state: $e');
+      }
+    }
   }
 
   @override
