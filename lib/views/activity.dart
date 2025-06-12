@@ -32,6 +32,207 @@ class _MyActivityPageState extends State<MyActivityPage> {
     _scrollController.addListener(_scrollListener);
   }
 
+  void _showCategoryBottomSheet(
+    BuildContext context,
+    String currentValue,
+    Function(String?) onChanged,
+    List<String> items,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Pilih Kategori',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final category = items[index];
+                      final isSelected = currentValue == category;
+
+                      return ListTile(
+                        title: Text(
+                          category,
+                          style: TextStyle(
+                            fontWeight:
+                                isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                            color:
+                                isSelected
+                                    ? const Color(0xFF004274)
+                                    : Colors.black,
+                          ),
+                        ),
+                        trailing: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color:
+                                isSelected
+                                    ? const Color(0xFF004274)
+                                    : Colors.white,
+                            border: Border.all(
+                              color:
+                                  isSelected
+                                      ? const Color(0xFF004274)
+                                      : Colors.grey.shade300,
+                              width: 1.5,
+                            ),
+                            boxShadow:
+                                isSelected
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ]
+                                    : null,
+                          ),
+                        ),
+                        tileColor:
+                            isSelected
+                                ? const Color.fromARGB(255, 237, 245, 252)
+                                : null,
+                        onTap: () {
+                          onChanged(category);
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showReportBottomSheet(
+    BuildContext context,
+    String currentValue,
+    Function(String?) onChanged,
+    List<String> items,
+  ) {
+    final reportLabels = {
+      "Report": "Report",
+      "hilang": "Barang Hilang",
+      "ditemukan": "Barang Ditemukan",
+    };
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Pilih Tipe Laporan',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Divider(height: 1),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final reportType = items[index];
+                    final isSelected = currentValue == reportType;
+
+                    // Untuk menentukan label yang ditampilkan
+                    String displayLabel =
+                        reportLabels[reportType] ?? reportType;
+
+                    return ListTile(
+                      title: Text(
+                        displayLabel,
+                        style: TextStyle(
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          color:
+                              isSelected
+                                  ? const Color(0xFF004274)
+                                  : Colors.black,
+                        ),
+                      ),
+                      trailing: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color:
+                              isSelected
+                                  ? const Color(0xFF004274)
+                                  : Colors.white,
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? const Color(0xFF004274)
+                                    : Colors.grey.shade300,
+                            width: 1.5,
+                          ),
+                          boxShadow:
+                              isSelected
+                                  ? [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.1),
+                                      blurRadius: 2,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                      ),
+                      tileColor:
+                          isSelected
+                              ? const Color.fromARGB(255, 237, 245, 252)
+                              : null,
+                      onTap: () {
+                        onChanged(reportType);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _scrollController.removeListener(_scrollListener);
@@ -146,26 +347,33 @@ class _MyActivityPageState extends State<MyActivityPage> {
                     padding: EdgeInsets.zero,
                   ),
                 ),
-                if (_isSelectionMode && _selectedItems.isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(left: 8),
-                    height: 48,
-                    width: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(28.0),
-                      border: Border.all(color: Colors.red),
-                    ),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.red,
-                        size: 20,
-                      ),
-                      onPressed: _confirmDelete,
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
+                // if (_isSelectionMode && _selectedItems.isNotEmpty)
+                //   Container(
+                //     margin: const EdgeInsets.only(left: 8),
+                //     height: 48,
+                //     width: 48,
+                //     // Perbaiki dekorasi
+                //     decoration: BoxDecoration(
+                //       color: Colors.red.withOpacity(0.1),
+                //       borderRadius: BorderRadius.circular(28.0),
+                //       border: Border.all(color: Colors.red),
+                //     ),
+                //     // Gunakan SizedBox untuk mengatur ukuran icon
+                //     child: SizedBox(
+                //       width: 40, // Kurangi sedikit dari container
+                //       height: 40,
+                //       child: IconButton(
+                //         icon: const Icon(
+                //           Icons.delete_outline,
+                //           color: Colors.red,
+                //           size: 20, // Pastikan ukuran icon tidak terlalu besar
+                //         ),
+                //         onPressed: _confirmDelete,
+                //         // Hapus padding zero agar icon tetap di tengah
+                //         // padding: EdgeInsets.zero,
+                //       ),
+                //     ),
+                //   ),
               ],
             ),
             const SizedBox(height: 16),
@@ -248,6 +456,17 @@ class _MyActivityPageState extends State<MyActivityPage> {
           ],
         ),
       ),
+      // Tambahkan floating action button
+      floatingActionButton:
+          _isSelectionMode && _selectedItems.isNotEmpty
+              ? FloatingActionButton(
+                onPressed: _confirmDelete,
+                backgroundColor: Colors.red,
+                child: const Icon(Icons.delete_outline, color: Colors.white),
+                tooltip: 'Hapus item terpilih',
+              )
+              : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
@@ -283,63 +502,145 @@ class _MyActivityPageState extends State<MyActivityPage> {
   ) {
     const double borderRadius = 28.0;
 
+    // Cek apakah nilai saat ini adalah default atau sudah dipilih
+    final bool isSelected = value != items[0];
+    final String displayValue = value;
+
+    // Jika sudah dipilih, tampilkan sebagai chip dengan tombol X
+    if (isSelected) {
+      return SizedBox(
+        width: 130,
+        child: GestureDetector(
+          onTap: () {
+            // Tentukan apakah ini Category atau Report berdasarkan label
+            if (label == "Category") {
+              _showCategoryBottomSheet(context, value, onChanged, items);
+            } else {
+              _showReportBottomSheet(context, value, onChanged, items);
+            }
+          },
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0D47A1).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(borderRadius),
+              border: Border.all(color: Colors.grey.shade400),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Text yang dipotong jika terlalu panjang
+                Expanded(
+                  child: Text(
+                    displayValue,
+                    style: const TextStyle(
+                      color: Color(0xFF004274),
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                // Tombol X untuk reset
+                GestureDetector(
+                  onTap: () {
+                    // Reset ke nilai default
+                    onChanged(items[0]);
+                  },
+                  child: const Icon(
+                    Icons.close,
+                    color: Color(0xFF004274),
+                    size: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
-      width: 155,
+      width: 130,
       child: StatefulBuilder(
         builder: (context, setStateLocal) {
-          return Material(
-            color: Colors.transparent,
-            child: DropdownButtonFormField<String>(
-              value: value,
-              alignment: AlignmentDirectional.centerStart,
-              isExpanded: true,
-              decoration: InputDecoration(
-                filled: value != items[0],
-                fillColor:
-                    value != items[0]
-                        ? const Color(0xFF0D47A1).withOpacity(0.1)
-                        : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(borderRadius),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(borderRadius),
-                  borderSide: BorderSide(color: Colors.grey.shade400),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(borderRadius),
-                  borderSide: const BorderSide(color: Color(0xFF004274)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+          return SizedBox(
+            width: 130,
+            child: GestureDetector(
+              // Tambahkan gesture detector untuk intercept tap dan tampilkan bottom sheet
+              onTap: () {
+                // Tentukan apakah ini Category atau Report berdasarkan label
+                if (label == "Category") {
+                  _showCategoryBottomSheet(context, value, onChanged, items);
+                } else {
+                  _showReportBottomSheet(context, value, onChanged, items);
+                }
+              },
+              // Tetap gunakan dropdown asli, tapi dengan disabled onChanged
+              child: AbsorbPointer(
+                child: StatefulBuilder(
+                  builder: (context, setStateLocal) {
+                    return Material(
+                      color: Colors.transparent,
+                      child: DropdownButtonFormField<String>(
+                        // Kode dropdown tetap sama
+                        value: value,
+                        alignment: AlignmentDirectional.centerStart,
+                        isExpanded: true,
+                        decoration: InputDecoration(
+                          filled: value != items[0],
+                          fillColor:
+                              value != items[0]
+                                  ? const Color(0xFF0D47A1).withOpacity(0.1)
+                                  : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(borderRadius),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(borderRadius),
+                            borderSide: BorderSide(color: Colors.grey.shade400),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(borderRadius),
+                            borderSide: const BorderSide(
+                              color: Color(0xFF004274),
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                        ),
+                        items:
+                            items
+                                .map(
+                                  (val) => DropdownMenuItem(
+                                    alignment: Alignment.centerLeft,
+                                    value: val,
+                                    child: Text(val),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            (_) {}, // Kosongkan ini, karena kita handle sendiri
+                        icon:
+                            value != items[0]
+                                ? _buildCloseButton(() {
+                                  onChanged(items[0]);
+                                })
+                                : const Icon(
+                                  Icons.arrow_drop_down,
+                                  color: Color(0xFF004274),
+                                ),
+                        iconSize: 24,
+                        iconEnabledColor: const Color(0xFF004274),
+                        dropdownColor: Colors.white,
+                      ),
+                    );
+                  },
                 ),
               ),
-              items:
-                  items
-                      .map(
-                        (val) => DropdownMenuItem(
-                          alignment: Alignment.centerLeft,
-                          value: val,
-                          child: Text(val),
-                        ),
-                      )
-                      .toList(),
-              onChanged: (newValue) {
-                onChanged(newValue);
-              },
-              icon:
-                  value != items[0]
-                      ? _buildCloseButton(() {
-                        onChanged(items[0]);
-                      })
-                      : const Icon(
-                        Icons.arrow_drop_down,
-                        color: Color(0xFF004274),
-                      ),
-              iconSize: 24,
-              iconEnabledColor: const Color(0xFF004274),
-              dropdownColor: Colors.white,
             ),
           );
         },

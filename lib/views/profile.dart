@@ -196,8 +196,9 @@ class _MyProfilePageState extends State<MyProfilePage> {
               buildMenuItem(
                 icon: Icons.person_outline,
                 title: 'My Profile',
-                onTap: () {
-                  Navigator.push(
+                onTap: () async {
+                  // Tambahkan async di sini
+                  final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
@@ -211,6 +212,15 @@ class _MyProfilePageState extends State<MyProfilePage> {
                           ),
                     ),
                   );
+
+                  // Cek hasil dari EditProfilePage
+                  if (result == true) {
+                    // Refresh data profile
+                    setState(() {
+                      _isLoading = true;
+                    });
+                    _loadUserData(); // Panggil method untuk reload data profile
+                  }
                 },
               ),
 

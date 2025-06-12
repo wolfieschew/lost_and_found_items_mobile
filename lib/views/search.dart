@@ -321,6 +321,7 @@ class _SearchPageState extends State<SearchPage> {
                 ChoiceChip(
                   label: const Text('Kehilangan'),
                   backgroundColor: Colors.white,
+                  selectedColor: const Color(0xFF004274).withOpacity(0.2),
                   selected: _selectedType == 'hilang',
                   onSelected: (selected) {
                     setState(() {
@@ -333,6 +334,7 @@ class _SearchPageState extends State<SearchPage> {
                 ChoiceChip(
                   label: const Text('Ditemukan'),
                   backgroundColor: Colors.white,
+                  selectedColor: const Color(0xFF004274).withOpacity(0.2),
                   selected: _selectedType == 'ditemukan',
                   onSelected: (selected) {
                     setState(() {

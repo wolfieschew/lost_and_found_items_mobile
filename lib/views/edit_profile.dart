@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../services/user_services.dart';
 
 class EditProfilePage extends StatefulWidget {
   final String firstName;
@@ -9,14 +11,14 @@ class EditProfilePage extends StatefulWidget {
   final String address;
 
   const EditProfilePage({
-    super.key,
+    Key? key,
     required this.firstName,
     required this.lastName,
     required this.nim,
     required this.email,
     required this.phoneNumber,
     required this.address,
-  });
+  }) : super(key: key);
 
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
@@ -30,6 +32,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController phoneController;
   late TextEditingController locationController;
 
+  final _userService = UserService();
+  bool _isLoading = false;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +45,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
     emailController = TextEditingController(text: widget.email);
     phoneController = TextEditingController(text: widget.phoneNumber);
     locationController = TextEditingController(text: widget.address);
+  }
+
+  Future<void> _updateProfile() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Hanya kirim data yang diperlukan, sesuai dengan format Postman yang berhasil
+      final userData = {
+        'first_name': firstNameController.text.trim(),
+        'last_name': lastNameController.text.trim(),
+        'nim': nimController.text.trim(),
+        'phone_number': phoneController.text.trim(),
+        'address': locationController.text.trim(),
+      };
+
+      print(
+        "EditProfilePage: Mengirim data minimal yang sama dengan Postman: $userData",
+      );
+
+      final response = await _userService.updateProfile(userData);
+      print("EditProfilePage: Update berhasil: $response");
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      print("EditProfilePage: Error detail: $e");
+
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll("Exception: ", "");
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update profile: ${_errorMessage}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -75,7 +138,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 Positioned(
                   bottom: 1,
                   child: InkWell(
-                    onTap: () {},
+                    onTap: () {
+                      // TODO: Implement image upload feature
+                    },
                     child: Container(
                       width: 90,
                       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -98,6 +163,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ],
             ),
             const SizedBox(height: 30),
+
+            // Error message
+            if (_errorMessage != null)
+              Container(
+                padding: const EdgeInsets.all(8),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             Card(
               elevation: 2,
               color: Colors.white,
@@ -117,30 +207,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                     const Divider(),
                     const SizedBox(height: 12),
-                    buildTextField('First Name', firstNameController),
-                    buildTextField('Last Name', lastNameController),
-                    buildTextField('NIM', nimController),
-                    buildTextField('Email', emailController),
-                    buildTextField('Phone Number', phoneController),
-                    buildTextField('Current Location', locationController),
+                    _buildTextField('First Name', firstNameController),
+                    _buildTextField('Last Name', lastNameController),
+                    _buildTextField('NIM', nimController),
+                    _buildTextField('Email', emailController),
+                    _buildTextField('Phone Number', phoneController),
+                    _buildTextField('Current Location', locationController),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 24),
+
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context, {
-                    'firstName': firstNameController.text,
-                    'lastName': lastNameController.text,
-                    'nim': nimController.text,
-                    'email': emailController.text,
-                    'phoneNumber': phoneController.text,
-                    'address': locationController.text,
-                  });
-                },
+                onPressed: _isLoading ? null : _updateProfile,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF004274),
                   foregroundColor: Colors.white,
@@ -152,7 +234,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Save Changes'),
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : const Text('Save Changes'),
               ),
             ),
           ],
@@ -161,7 +253,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget buildTextField(String label, TextEditingController controller) {
+  Widget _buildTextField(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: TextField(
@@ -172,5 +264,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    nimController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
+    locationController.dispose();
+    super.dispose();
   }
 }

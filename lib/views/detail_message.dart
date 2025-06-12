@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
 class DetailMessage extends StatefulWidget {
   final String userName;
@@ -17,6 +18,9 @@ class DetailMessage extends StatefulWidget {
 
 class _DetailMessageState extends State<DetailMessage> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  // Pesan-pesan chat
   final List<ChatMessage> messages = [
     ChatMessage(
       text: 'Haii, tadi aku nemu barang kamu depan FIT',
@@ -35,8 +39,69 @@ class _DetailMessageState extends State<DetailMessage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Scroll ke pesan terbaru setelah tampilan dibangun
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+    });
+  }
+
+  void _handleSubmitted() {
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    final now = DateTime.now();
+    final timeString = DateFormat('HH:mm').format(now);
+
+    setState(() {
+      messages.add(
+        ChatMessage(
+          text: text,
+          isMe: true,
+          time: timeString,
+          status: 'Sending...',
+          avatar: 'assets/images/profile.jpg',
+        ),
+      );
+      _messageController.clear();
+    });
+
+    // Scroll to bottom
+    Future.delayed(const Duration(milliseconds: 100), () {
+      _scrollToBottom();
+    });
+
+    // Update status to delivered
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          messages.last = ChatMessage(
+            text: messages.last.text,
+            isMe: true,
+            time: messages.last.time,
+            status: 'Delivered',
+            avatar: messages.last.avatar,
+          );
+        });
+      }
+    });
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -72,6 +137,7 @@ class _DetailMessageState extends State<DetailMessage> {
           // Chat messages area
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               itemCount: messages.length,
               itemBuilder: (context, index) {
@@ -193,32 +259,17 @@ class _DetailMessageState extends State<DetailMessage> {
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    onSubmitted: (_) => _handleSubmitted(),
                   ),
                 ),
                 const SizedBox(width: 10),
                 Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C8CB1),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF6C8CB1),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    onPressed: () {
-                      // Implementasi kirim pesan
-                      // if (_messageController.text.trim().isNotEmpty) {
-                      //   setState(() {
-                      //     messages.add(
-                      //       ChatMessage(
-                      //         text: _messageController.text,
-                      //         isMe: true,
-                      //         time: DateTime.now().toString(),
-                      //         status: 'Sending...',
-                      //         avatar: 'assets/images/profile.jpg',
-                      //       ),
-                      //     );
-                      //     _messageController.clear();
-                      //   });
-                      // }
-                    },
+                    onPressed: _handleSubmitted,
                     icon: const Icon(Icons.send, color: Colors.white),
                   ),
                 ),

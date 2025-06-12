@@ -54,13 +54,13 @@ class _DashboardState extends State<Dashboard> {
     final authViewModel = Provider.of<AuthViewModel>(context);
 
     // Jika belum login, redirect ke login page
-    if (!authViewModel.isLoggedIn && !authViewModel.isLoading) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));
-      });
-    }
+    // if (!authViewModel.isLoggedIn && !authViewModel.isLoading) {
+    //   WidgetsBinding.instance.addPostFrameCallback((_) {
+    //     Navigator.of(
+    //       context,
+    //     ).pushReplacement(MaterialPageRoute(builder: (_) => const LoginPage()));
+    //   });
+    // }
 
     return Scaffold(
       body: _pages[_selectedIndex],
@@ -138,6 +138,100 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (context) => FullScreenImage(imageUrl: imageUrl, title: title),
       ),
+    );
+  }
+
+  // Tambahkan method ini di class _HomePageState
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  'Pilih Kategori',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+              Divider(height: 1),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildFilterItem('all', 'Semua Kategori'),
+                      _buildFilterItem('hilang', 'Barang Hilang'),
+                      _buildFilterItem('ditemukan', 'Barang Ditemukan'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method untuk item filter
+  Widget _buildFilterItem(String value, String label) {
+    final bool isSelected = _filterType == value;
+
+    return ListTile(
+      title: Text(
+        label,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? const Color(0xFF004274) : Colors.black,
+        ),
+      ),
+      trailing: Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isSelected ? const Color(0xFF004274) : Colors.white,
+          border: Border.all(
+            color: isSelected ? const Color(0xFF004274) : Colors.grey.shade300,
+            width: 1.5,
+          ),
+          boxShadow:
+              isSelected
+                  ? [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                  : null,
+        ),
+      ),
+      tileColor: isSelected ? const Color.fromARGB(255, 237, 245, 252) : null,
+      onTap: () {
+        setState(() {
+          _filterType = value;
+        });
+
+        // Apply filter
+        if (value == 'hilang') {
+          Provider.of<ItemViewModel>(context, listen: false).getLostItems();
+        } else if (value == 'ditemukan') {
+          Provider.of<ItemViewModel>(context, listen: false).getFoundItems();
+        } else {
+          Provider.of<ItemViewModel>(context, listen: false).getItems();
+        }
+
+        Navigator.pop(context); // Tutup bottom sheet
+      },
     );
   }
 
@@ -225,24 +319,24 @@ class _HomePageState extends State<HomePage> {
                             size: 30,
                             color: Colors.white,
                           ),
-                          Positioned(
-                            top: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Text(
-                                '4',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Positioned(
+                          //   top: 0,
+                          //   right: 0,
+                          //   child: Container(
+                          //     padding: const EdgeInsets.all(4),
+                          //     decoration: const BoxDecoration(
+                          //       color: Colors.red,
+                          //       shape: BoxShape.circle,
+                          //     ),
+                          //     child: const Text(
+                          //       '4',
+                          //       style: TextStyle(
+                          //         color: Colors.white,
+                          //         fontSize: 10,
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),
                     ),
@@ -263,46 +357,11 @@ class _HomePageState extends State<HomePage> {
                     'Timeline Laporan',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  PopupMenuButton<String>(
+                  IconButton(
                     icon: const Icon(Icons.tune),
-                    color: Colors.white,
-                    onSelected: (value) {
-                      setState(() {
-                        _filterType = value;
-                      });
-                      // Apply filter
-                      if (value == 'hilang') {
-                        Provider.of<ItemViewModel>(
-                          context,
-                          listen: false,
-                        ).getLostItems();
-                      } else if (value == 'ditemukan') {
-                        Provider.of<ItemViewModel>(
-                          context,
-                          listen: false,
-                        ).getFoundItems();
-                      } else {
-                        Provider.of<ItemViewModel>(
-                          context,
-                          listen: false,
-                        ).getItems();
-                      }
+                    onPressed: () {
+                      _showFilterBottomSheet(context);
                     },
-                    itemBuilder:
-                        (context) => [
-                          const PopupMenuItem(
-                            value: 'all',
-                            child: Text('Semua'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'hilang',
-                            child: Text('Barang Hilang'),
-                          ),
-                          const PopupMenuItem(
-                            value: 'ditemukan',
-                            child: Text('Barang Ditemukan'),
-                          ),
-                        ],
                   ),
                 ],
               ),
@@ -378,7 +437,7 @@ class _HomePageState extends State<HomePage> {
                               crossAxisCount: 2,
                               crossAxisSpacing: 12,
                               mainAxisSpacing: 12,
-                              childAspectRatio: 3 / 2.5,
+                              childAspectRatio: 1 / 1.1,
                             ),
                         itemBuilder: (context, index) {
                           final item = itemViewModel.items[index];
